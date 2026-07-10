@@ -1,0 +1,11 @@
+# Source research documents (not part of the deployed site)
+*.pdf
+*.docx
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+*.swp

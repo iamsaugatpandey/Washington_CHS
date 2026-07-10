@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cannabinoid Hyperemesis Syndrome — Guideline Atlas</title>
+<meta name="description" content="An interactive, comparative dashboard of 11 published Cannabinoid Hyperemesis Syndrome (CHS) clinical guidelines and pathways.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231E7A46' stroke-width='1.8'%3E%3Cpath d='M12 21C7 21 3 16.7 3 10.8 3 6.2 6.6 3 12 3s9 3.2 9 7.8C21 16.7 17 21 12 21Z'/%3E%3Cpath d='M12 21V6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="app">
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <svg class="brand-mark" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M12 21C7 21 3 16.7 3 10.8 3 6.2 6.6 3 12 3s9 3.2 9 7.8C21 16.7 17 21 12 21Z"/>
+          <path d="M12 21V6"/>
+          <path d="M12 9c-2.5 0-4.2 1.6-4.2 1.6M12 13c-3 0-5-1.8-5-1.8M12 9c2.5 0 4.2 1.6 4.2 1.6M12 13c3 0-1 5 0-1.8"/>
+        </svg>
+        <div>
+          <p class="eyebrow">Clinical Guideline Atlas</p>
+          <h1>Cannabinoid Hyperemesis Syndrome</h1>
+          <p class="sub">A comparative review of 11 institutional guidelines and clinical pathways for diagnosis and management of CHS.</p>
+        </div>
+      </div>
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle color theme">
+        <span id="themeIcon">◐</span><span id="themeLabel">Auto</span>
+      </button>
+    </div>
+    <nav class="tabs" role="tablist" id="tabNav">
+      <button class="tab active" data-tab="overview" role="tab">Overview</button>
+      <button class="tab" data-tab="atlas" role="tab">Guidelines</button>
+      <button class="tab" data-tab="diagnosis" role="tab">Diagnosis</button>
+      <button class="tab" data-tab="treatment" role="tab">Treatment</button>
+      <button class="tab" data-tab="followup" role="tab">Follow-up &amp; Safety</button>
+      <button class="tab" data-tab="avp" role="tab">Adult vs Pediatric</button>
+      <button class="tab" data-tab="compare" role="tab">Compare</button>
+      <button class="tab" data-tab="contacts" role="tab">Contacts</button>
+    </nav>
+  </header>
+
+  <div class="filterbar">
+    <div class="filterbar-inner">
+      <span class="filter-label">Guidelines</span>
+      <div class="chip-row" id="chipRow"></div>
+      <div class="filter-actions">
+        <label class="dim-toggle" data-tooltip="When you narrow the guideline chips (or open a system from the map), everything else fades to 32% opacity by default. Check this to hide those non-matching rows and cards completely instead of just fading them. With every guideline selected, there's nothing to hide yet — try deselecting a few chips first.">
+          <input type="checkbox" id="hideNonMatch"/> Hide non-matching
+          <svg class="info-ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r="0.5" fill="currentColor"/></svg>
+        </label>
+        <button class="ghost-btn" id="btnAdult" type="button">Adult only</button>
+        <button class="ghost-btn" id="btnPeds" type="button">Pediatric only</button>
+        <button class="ghost-btn" id="btnAll" type="button">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <section class="panel active" id="panel-overview"></section>
+    <section class="panel" id="panel-atlas"></section>
+    <section class="panel" id="panel-diagnosis"></section>
+    <section class="panel" id="panel-treatment"></section>
+    <section class="panel" id="panel-followup"></section>
+    <section class="panel" id="panel-avp"></section>
+    <section class="panel" id="panel-compare"></section>
+    <section class="panel" id="panel-contacts"></section>
+  </main>
+
+  <footer>Synthesized from 11 published CHS guidelines and clinical pathways (LaPoint 2018 – Hsu 2025) for research and educational reference. Not a substitute for institutional protocols or clinical judgment.</footer>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
