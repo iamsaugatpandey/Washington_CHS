@@ -5,7 +5,6 @@
 
 var state = {
   activeIds: new Set(ALL_IDS),
-  hideNonMatch: false,
   compareIds: new Set(["jhach","ucsf","laPoint","agaRubio"]),
   compareAxes: new Set(COMPARE_CATEGORIES.map(function(c){ return c.key; })),
   fieldsMenuOpen: false,
@@ -45,8 +44,7 @@ function intersects(guidelineIds){
 
 function applyFilterClass(el, guidelineIds){
   var match = intersects(guidelineIds);
-  el.classList.toggle("dim", !match && !state.hideNonMatch);
-  el.classList.toggle("hidden", !match && state.hideNonMatch);
+  el.classList.toggle("dim", !match);
 }
 
 /* ============================== RENDERERS ============================== */
@@ -66,7 +64,7 @@ function renderOverview(){
   var totalAdult = ALL_IDS.length - totalPeds;
   el.innerHTML =
     '<div class="hero">'+
-      '<h2><svg class="hero-icon" width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg>Eleven Health Systems. One syndrome.</h2>'+
+      '<h2>Eleven Health Systems. One syndrome.</h2>'+
       '<p class="lede">This atlas synthesizes 11 published guidelines and clinical pathways for Cannabinoid Hyperemesis Syndrome (CHS) — spanning single-institution pediatric pathways, national society consensus statements, and international emergency-medicine reviews — so you can compare diagnostic thresholds, treatment ladders, and discharge planning side by side.</p>'+
       '<div class="stat-row">'+
         '<div class="stat-tile"><div class="n tabular">11</div><div class="l">Guidelines reviewed</div></div>'+
@@ -509,12 +507,9 @@ function activateTab(tabName){
 
 function goToGuideline(id, tabName){
   state.activeIds = new Set([id]);
-  state.hideNonMatch = true;
   renderChips();
   bindChipEvents();
   refreshFilters();
-  var hideBox = document.getElementById("hideNonMatch");
-  if (hideBox) hideBox.checked = true;
   closeMapModal();
   activateTab(tabName);
   window.scrollTo({ top:0, behavior:"smooth" });
@@ -570,11 +565,6 @@ document.getElementById("btnPeds").addEventListener("click", function(){
   renderChips(); refreshFilters(); bindChipEvents();
   if (document.getElementById("panel-avp").classList.contains("active")) renderAVP();
 });
-document.getElementById("hideNonMatch").addEventListener("change", function(e){
-  state.hideNonMatch = e.target.checked;
-  refreshFilters();
-});
-
 document.querySelectorAll(".tab").forEach(function(tab){
   tab.addEventListener("click", function(){
     activateTab(tab.getAttribute("data-tab"));
