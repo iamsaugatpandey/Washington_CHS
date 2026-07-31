@@ -415,7 +415,11 @@
   .contact-card .person a:hover { text-decoration: underline; }
   .contact-card .name { color: var(--ink-soft); }
 
-  footer { text-align: center; padding: 40px 24px 20px; color: var(--ink-faint); font-size: 12px; border-top: 1px solid var(--line); margin-top: 20px; }
+  footer { text-align: center; padding: 40px 24px 24px; color: var(--ink-faint); font-size: 12px; border-top: 1px solid var(--line); margin-top: 20px; }
+  footer p { max-width: 62ch; margin: 0 auto; line-height: 1.6; }
+  footer p + p { margin-top: 10px; }
+  footer a { color: var(--ink-faint); text-decoration: underline; }
+  footer a:hover { color: var(--moss); }
 
   input[type="search"] {
     background: var(--card); border: 1px solid var(--line-strong); border-radius: 999px; padding: 6px 14px 6px 30px;
