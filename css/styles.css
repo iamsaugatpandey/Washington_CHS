@@ -391,20 +391,35 @@
     padding: 6px 13px; font-size: 12.5px; font-weight: 600; cursor: pointer;
   }
   .compare-chip.active { background: var(--moss); border-color: var(--moss); color: #fff; }
-  .compare-chip:disabled { opacity: .35; cursor: not-allowed; }
+  .compare-picker .ghost-btn { margin-left: 2px; }
   .compare-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); align-items: start; }
   .compare-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
   .compare-card h3 { font-size: 15.5px; margin-bottom: 4px; }
   .compare-card .loc { font-size: 11.5px; color: var(--ink-faint); margin-bottom: 12px; }
   .compare-card .axis { margin-bottom: 16px; }
   .compare-card .axis .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; color: var(--ink-faint); margin-bottom: 6px; }
-  .compare-card .axis .v { font-size: 12.8px; color: var(--ink); line-height: 1.55; }
-  .compare-card .entry-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-  .compare-card .entry-list li { padding-left: 10px; border-left: 2px solid var(--line-strong); }
-  .compare-card .entry-name { display: block; font-size: 12.5px; font-weight: 700; color: var(--ink); }
-  .compare-card .entry-dose { display: block; font-size: 11px; font-family: var(--font-mono); color: var(--ink-soft); margin-top: 3px; line-height: 1.5; }
-  .compare-card .entry-note { display: block; font-size: 12.3px; color: var(--ink-soft); line-height: 1.55; margin-top: 4px; }
-  .compare-hint { font-size: 12.5px; color: var(--ink-faint); margin-bottom: 16px; }
+
+  /* entry-list is shared by the card view and the table-cell view */
+  .entry-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .entry-list li { padding-left: 10px; border-left: 2px solid var(--line-strong); }
+  .entry-name { display: block; font-size: 12.5px; font-weight: 700; color: var(--ink); }
+  .entry-dose { display: block; font-size: 11px; font-family: var(--font-mono); color: var(--ink-soft); margin-top: 3px; line-height: 1.5; }
+  .entry-note { display: block; font-size: 12.3px; color: var(--ink-soft); line-height: 1.55; margin-top: 4px; }
+
+  .compare-hint-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .compare-hint { font-size: 12.5px; color: var(--ink-faint); }
+  .view-toggle { margin-bottom: 0; }
+
+  .compare-table { border-collapse: collapse; width: 100%; min-width: 760px; }
+  .compare-table th, .compare-table td { border: 1px solid var(--line); padding: 12px 14px; text-align: left; vertical-align: top; }
+  .compare-table thead th { background: var(--card-2); font-size: 12px; font-weight: 700; }
+  .compare-table td { min-width: 230px; max-width: 340px; }
+  .compare-table td.row-head, .compare-table th.row-head-col {
+    position: sticky; left: 0; z-index: 2; background: var(--card-2); font-weight: 700; font-size: 11px;
+    text-transform: uppercase; letter-spacing: .05em; color: var(--ink-faint); white-space: nowrap; min-width: auto;
+  }
+  .col-head { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; }
+  .col-head .col-name { font-size: 12.8px; font-weight: 700; color: var(--ink); }
 
   /* ---------- Contacts ---------- */
   .contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }

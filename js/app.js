@@ -7,6 +7,7 @@ var state = {
   activeIds: new Set(ALL_IDS),
   compareIds: new Set(["jhach","ucsf","laPoint","agaRubio"]),
   compareAxes: new Set(COMPARE_CATEGORIES.map(function(c){ return c.key; })),
+  compareViewOverride: null, /* null = auto (table once >4 selected); or "cards"/"table" once the user picks explicitly */
   fieldsMenuOpen: false,
   activeSubtab: { treatment: "ed" }
 };
@@ -84,10 +85,9 @@ function renderOverview(){
     '<div class="section">'+
       '<div class="section-head"><h2>How to use this atlas</h2></div>'+
       '<div class="universal-grid">'+
-        '<div class="universal-card"><span class="tag">Filter</span><br>Use the guideline chips above to select any combination of the 11 sources. Tables and cards throughout the atlas dim to show only what your selection covers.</div>'+
-        '<div class="universal-card"><span class="tag">Diagnosis</span><br>See which of 9 diagnostic criteria each guideline requires, and read the exact caveats institutions attach to Rome IV.</div>'+
-        '<div class="universal-card"><span class="tag">Treatment</span><br>Step through ED, hospitalization, outpatient, and discharge management with dosing and per-guideline notes.</div>'+
-        '<div class="universal-card"><span class="tag">Compare</span><br>Pick 2–4 guidelines for a synthesized side-by-side comparison across diagnosis, first-line therapy, and discharge stance.</div>'+
+        '<div class="universal-card"><span class="tag">Filter</span><br>Use the guideline chips above to select any combination of the 11 sources. Cards throughout the atlas dim to show only what your selection covers.</div>'+
+        '<div class="universal-card"><span class="tag">Guidelines</span><br>Browse the full directory of all 11 institutions, with location, population, and a link to the original guideline text.</div>'+
+        '<div class="universal-card"><span class="tag">Compare</span><br>Pick any number of guidelines — from 2 up to all 11 — for a full side-by-side comparison across diagnosis, treatment, discharge, and follow-up, pulled verbatim from the source table.</div>'+
       '</div>'+
     '</div>';
   renderMap();
@@ -255,13 +255,55 @@ function getGuidelineEntries(id, categoryKey){
   return [];
 }
 
+function entryListHTML(entries){
+  if (!entries.length) return '<p class="fields-empty">Not addressed in this entry of the source table.</p>';
+  return '<ul class="entry-list">'+entries.map(function(e){
+    return '<li>'+
+      '<span class="entry-name">'+e.name+'</span>'+
+      (e.dose ? '<span class="entry-dose">'+e.dose+'</span>' : '')+
+      (e.note ? '<span class="entry-note">'+e.note+'</span>' : '')+
+    '</li>';
+  }).join("")+'</ul>';
+}
+
+function renderCompareCards(ids, visibleCats){
+  var cards = ids.map(function(id){
+    var g = GUIDELINES[id];
+    var loc = [g.city, g.state, g.country].filter(Boolean).join(", ");
+    var sections = visibleCats.length ? visibleCats.map(function(c){
+      return '<div class="axis"><div class="k">'+c.label+'</div>'+entryListHTML(getGuidelineEntries(id, c.key))+'</div>';
+    }).join("") : '<p class="fields-empty">No sections selected — use &ldquo;Fields&rdquo; above to choose what to show.</p>';
+    return '<div class="compare-card"><h3>'+g.name+' <span class="pop-pill '+g.pop+'" style="margin-left:6px;">'+(g.pop==="pediatric"?"Peds":"Adult")+'</span></h3>'+
+      '<div class="loc">'+g.institution+' &middot; '+loc+'</div>'+sections+'</div>';
+  }).join("");
+  return '<div class="compare-grid">'+cards+'</div>';
+}
+
+function renderCompareTable(ids, visibleCats){
+  if (!visibleCats.length){
+    return '<p class="fields-empty">No sections selected — use &ldquo;Fields&rdquo; above to choose what to show.</p>';
+  }
+  var head = '<tr><th class="row-head-col">Section</th>'+ids.map(function(id){
+    var g = GUIDELINES[id];
+    return '<th><div class="col-head"><span class="pop-pill '+g.pop+'">'+(g.pop==="pediatric"?"Peds":"Adult")+'</span><span class="col-name">'+g.short+'</span></div></th>';
+  }).join("")+'</tr>';
+  var rows = visibleCats.map(function(c){
+    return '<tr><td class="row-head">'+c.label+'</td>'+ids.map(function(id){
+      return '<td>'+entryListHTML(getGuidelineEntries(id, c.key))+'</td>';
+    }).join("")+'</tr>';
+  }).join("");
+  return '<div class="table-scroll"><table class="compare-table"><thead>'+head+'</thead><tbody>'+rows+'</tbody></table></div>';
+}
+
 function renderCompare(){
   var el = document.getElementById("panel-compare");
   var picker = '<div class="compare-picker">'+ALL_IDS.map(function(id){
     var active = state.compareIds.has(id);
-    var disabled = !active && state.compareIds.size>=4;
-    return '<button class="compare-chip'+(active?' active':'')+'" data-cmp="'+id+'" '+(disabled?'disabled':'')+' type="button">'+GUIDELINES[id].short+'</button>';
-  }).join("")+'</div>';
+    return '<button class="compare-chip'+(active?' active':'')+'" data-cmp="'+id+'" type="button">'+GUIDELINES[id].short+'</button>';
+  }).join("")+
+    '<button class="ghost-btn" id="compareSelectAll" type="button">Select all 11</button>'+
+    '<button class="ghost-btn" id="compareClear" type="button">Clear</button>'+
+  '</div>';
 
   var visibleCats = COMPARE_CATEGORIES.filter(function(c){ return state.compareAxes.has(c.key); });
   var fieldsMenu =
@@ -280,41 +322,50 @@ function renderCompare(){
     '</div>';
 
   var ids = Array.from(state.compareIds);
-  var cards = ids.map(function(id){
-    var g = GUIDELINES[id];
-    var loc = [g.city, g.state, g.country].filter(Boolean).join(", ");
-    var sections = visibleCats.length ? visibleCats.map(function(c){
-      var entries = getGuidelineEntries(id, c.key);
-      var body = entries.length ? '<ul class="entry-list">'+entries.map(function(e){
-        return '<li>'+
-          '<span class="entry-name">'+e.name+'</span>'+
-          (e.dose ? '<span class="entry-dose">'+e.dose+'</span>' : '')+
-          (e.note ? '<span class="entry-note">'+e.note+'</span>' : '')+
-        '</li>';
-      }).join("")+'</ul>' : '<p class="fields-empty">Not addressed in this entry of the source table.</p>';
-      return '<div class="axis"><div class="k">'+c.label+'</div>'+body+'</div>';
-    }).join("") : '<p class="fields-empty">No sections selected — use &ldquo;Fields&rdquo; above to choose what to show.</p>';
-    return '<div class="compare-card"><h3>'+g.name+' <span class="pop-pill '+g.pop+'" style="margin-left:6px;">'+(g.pop==="pediatric"?"Peds":"Adult")+'</span></h3>'+
-      '<div class="loc">'+g.institution+' &middot; '+loc+'</div>'+sections+'</div>';
-  }).join("");
+  var viewMode = state.compareViewOverride || (ids.length>4 ? "table" : "cards");
+  var viewToggle =
+    '<div class="subnav view-toggle">'+
+      '<button data-view="cards" class="'+(viewMode==="cards"?"active":"")+'">Cards</button>'+
+      '<button data-view="table" class="'+(viewMode==="table"?"active":"")+'">Table</button>'+
+    '</div>';
+
+  var body = viewMode==="table" ? renderCompareTable(ids, visibleCats) : renderCompareCards(ids, visibleCats);
 
   el.innerHTML =
     '<div class="compare-toolbar">'+
-      '<div class="section-head"><h2>Side-by-side comparison</h2><p>Choose 2–4 guidelines to compare. Each section below is one of the six sections of the source guideline table (Diagnoses, ED, Hospitalization, Outpatient, Discharge, Follow-up) — text shown is copied exactly from that guideline&rsquo;s entry, the same wording used on the Diagnosis, Treatment, and Follow-up tabs, never paraphrased. Open &ldquo;Fields&rdquo; and hover the &#9432; next to a section name for what it covers.</p></div>'+
+      '<div class="section-head"><h2>Side-by-side comparison</h2><p>Choose any number of guidelines, from 2 up to all 11. Each section is one of the six sections of the source guideline table (Diagnoses, ED, Hospitalization, Outpatient, Discharge, Follow-up) — text shown is copied exactly from that guideline&rsquo;s entry, never paraphrased. Open &ldquo;Fields&rdquo; and hover the &#9432; next to a section name for what it covers.</p></div>'+
       fieldsMenu+
     '</div>'+
     picker+
-    '<div class="compare-hint">'+ids.length+' of 4 selected'+(ids.length<2?' — choose at least 2 to compare.':'')+'</div>'+
-    (ids.length>=2 ? '<div class="compare-grid">'+cards+'</div>' : '');
+    '<div class="compare-hint-row">'+
+      '<div class="compare-hint">'+ids.length+' of 11 selected'+(ids.length===1?' — add more to compare side by side.':'')+'</div>'+
+      viewToggle+
+    '</div>'+
+    body;
 
   el.querySelectorAll(".compare-chip").forEach(function(btn){
     btn.addEventListener("click", function(){
       var id = btn.getAttribute("data-cmp");
       if (state.compareIds.has(id)){
-        if (state.compareIds.size>2) state.compareIds.delete(id);
+        if (state.compareIds.size>1) state.compareIds.delete(id);
       } else {
-        if (state.compareIds.size<4) state.compareIds.add(id);
+        state.compareIds.add(id);
       }
+      renderCompare();
+    });
+  });
+  document.getElementById("compareSelectAll").addEventListener("click", function(){
+    state.compareIds = new Set(ALL_IDS);
+    renderCompare();
+  });
+  document.getElementById("compareClear").addEventListener("click", function(){
+    var first = Array.from(state.compareIds)[0] || ALL_IDS[0];
+    state.compareIds = new Set([first]);
+    renderCompare();
+  });
+  el.querySelectorAll(".view-toggle button").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      state.compareViewOverride = btn.getAttribute("data-view");
       renderCompare();
     });
   });
@@ -455,13 +506,12 @@ function renderLocationDetail(body, title, loc){
     '<div class="map-modal-inst">'+g.institution+'</div>'+
     '<div class="map-modal-loc">'+locParts.join(", ")+'</div>'+
     '<div class="map-modal-actions">'+
-      '<button class="modal-cta" data-goto-tab="diagnosis" data-goto-id="'+loc.id+'" type="button">View full diagnostic criteria</button>'+
-      '<button class="modal-cta" data-goto-tab="treatment" data-goto-id="'+loc.id+'" type="button">View full treatment guideline</button>'+
+      '<button class="modal-cta" data-goto-compare="'+loc.id+'" type="button">Compare this guideline in detail</button>'+
       (g.sourceUrl ? '<a class="modal-cta outline" href="'+g.sourceUrl+'" target="_blank" rel="noopener noreferrer">Read the original guideline ↗</a>' : '')+
     '</div>';
-  body.querySelectorAll("[data-goto-tab]").forEach(function(btn){
+  body.querySelectorAll("[data-goto-compare]").forEach(function(btn){
     btn.addEventListener("click", function(){
-      goToGuideline(btn.getAttribute("data-goto-id"), btn.getAttribute("data-goto-tab"));
+      goToCompareGuideline(btn.getAttribute("data-goto-compare"));
     });
   });
 }
@@ -505,13 +555,10 @@ function activateTab(tabName){
   if (tabName==="avp") renderAVP();
 }
 
-function goToGuideline(id, tabName){
-  state.activeIds = new Set([id]);
-  renderChips();
-  bindChipEvents();
-  refreshFilters();
+function goToCompareGuideline(id){
+  state.compareIds = new Set([id]);
   closeMapModal();
-  activateTab(tabName);
+  activateTab("compare");
   window.scrollTo({ top:0, behavior:"smooth" });
 }
 
