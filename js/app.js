@@ -7,69 +7,61 @@ var state = {
   activeIds: new Set(ALL_IDS),
   compareIds: new Set(["jhach","ucsf","laPoint","agaRubio"]),
   compareAxes: new Set(COMPARE_CATEGORIES.map(function(c){ return c.key; })),
-  compareViewOverride: null, /* null = auto (table once >4 selected); or "cards"/"table" once the user picks explicitly */
   fieldsMenuOpen: false,
   activeSubtab: { treatment: "ed" },
-  viewMode: { diagnosis: "cards", treatment: "cards", followup: "cards", specialnotes: "cards" }
+  /* Each of these tabs gets its own guideline picker, independent of the
+     others and of the global filter chips — a deselected guideline is
+     absent from that tab entirely, never just dimmed. */
+  diagnosisIds: new Set(ALL_IDS),
+  treatmentIds: new Set(ALL_IDS),
+  followupIds: new Set(ALL_IDS),
+  specialNotesIds: new Set(ALL_IDS),
+  /* null = auto (table once >4 selected); "cards"/"table" once picked explicitly */
+  viewOverride: { diagnosis: null, treatment: null, followup: null, specialnotes: null, compare: null }
 };
 
 /* ============================== HELPERS ============================== */
 
-function esc(s){ return (s===undefined||s===null) ? "" : String(s); }
+/* ---- Shared "compare this topic across guidelines" building blocks, used
+   by Diagnosis, Treatment, Follow-up Care, Special Notes, and Compare.
+   A guideline not in the picker's selection is fully absent — never dimmed. ---- */
 
-function dotgrid(guidelineIds){
-  var set = new Set(guidelineIds);
-  var html = '<div class="dotgrid">';
-  ALL_IDS.forEach(function(id){
-    var on = set.has(id);
-    var pop = GUIDELINES[id].pop;
-    html += '<span class="dot'+(on?' on '+pop:'')+'" data-dotid="'+id+'" tabindex="0" role="button" aria-label="'+GUIDELINES[id].name+(on?' — included':' — not included')+'" title="'+GUIDELINES[id].name+(on?' — included':' — not included')+'"></span>';
-  });
-  html += '</div>';
-  return html;
-}
-
-/* A fixed-order key so a dot's position is verifiable at a glance instead of
-   requiring a hover per dot — every dotgrid() on the page uses this same order. */
-function renderDotLegend(){
-  var items = ALL_IDS.map(function(id){
-    var g = GUIDELINES[id];
-    return '<span class="legend-item" data-tooltip="'+g.name+'"><span class="sw '+g.pop+'"></span>'+g.short+'</span>';
-  }).join("");
-  return '<div class="dot-legend"><span class="dot-legend-label">Dot order</span>'+items+'</div>';
-}
-
-/* Renders one <li> per guideline that has a note on this item, in fixed
-   ALL_IDS order — the guideline's own name plus its exact wording, never a
-   shared paraphrase. Optional item.status[id] renders as a short badge. */
-function guidelineBreakdown(item){
-  var notes = item.notes || {};
-  var rows = ALL_IDS.filter(function(id){ return notes[id]; }).map(function(id){
-    var g = GUIDELINES[id];
-    var badge = (item.status && item.status[id]) ? '<span class="status-badge '+g.pop+'">'+item.status[id]+'</span>' : '';
-    return '<li><span class="entry-name">'+g.short+'</span>'+badge+'<span class="entry-note">'+notes[id]+'</span></li>';
-  }).join("");
-  return rows ? '<ul class="entry-list">'+rows+'</ul>' : '<p class="fields-empty">No guideline-specific text available for this item.</p>';
-}
-
-function detailItemHTML(item, opts){
-  opts = opts || {};
-  var count = item.guidelines.length;
-  return '<div class="detail-item" data-guidelines="'+item.guidelines.join(",")+'">'+
-    '<div class="detail-item-head">'+
-      '<div class="detail-item-name">'+item.name+'</div>'+
-      (opts.dose ? '<div class="detail-item-dose">'+opts.dose+'</div>' : '')+
-      '<div class="detail-item-count tabular">'+count+' of 11</div>'+
-      dotgrid(item.guidelines)+
-    '</div>'+
-    guidelineBreakdown(item)+
+function renderPicker(idsSetKey){
+  var idsSet = state[idsSetKey];
+  return '<div class="compare-picker" data-picker="'+idsSetKey+'">'+ALL_IDS.map(function(id){
+    var active = idsSet.has(id);
+    return '<button class="compare-chip'+(active?' active':'')+'" data-cmp="'+id+'" type="button">'+GUIDELINES[id].short+'</button>';
+  }).join("")+
+    '<button class="ghost-btn" data-pickall type="button">Select all 11</button>'+
+    '<button class="ghost-btn" data-pickclear type="button">Clear</button>'+
   '</div>';
+}
+function bindPicker(el, idsSetKey, rerender){
+  var pickerEl = el.querySelector('[data-picker="'+idsSetKey+'"]');
+  if (!pickerEl) return;
+  pickerEl.querySelectorAll(".compare-chip").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var id = btn.getAttribute("data-cmp");
+      var s = state[idsSetKey];
+      if (s.has(id)){ if (s.size>1) s.delete(id); } else { s.add(id); }
+      rerender();
+    });
+  });
+  pickerEl.querySelector("[data-pickall]").addEventListener("click", function(){ state[idsSetKey] = new Set(ALL_IDS); rerender(); });
+  pickerEl.querySelector("[data-pickclear]").addEventListener("click", function(){
+    var first = Array.from(state[idsSetKey])[0] || ALL_IDS[0];
+    state[idsSetKey] = new Set([first]);
+    rerender();
+  });
+}
+function renderSelectionHint(ids){
+  return '<div class="compare-hint">'+ids.length+' of 11 selected'+(ids.length===1?' — add more to compare side by side.':'')+'</div>';
 }
 
 /* Cards <-> Table toggle reused by Diagnosis, Treatment, Follow-up Care,
-   and Special Notes — same pattern as the Compare tab. */
-function renderViewToggle(tabKey){
-  var mode = state.viewMode[tabKey];
+   and Special Notes — same pattern as the Compare tab. mode is computed by
+   the caller (auto-switches to table past 4 selections unless overridden). */
+function renderViewToggle(tabKey, mode){
   return '<div class="subnav view-toggle" data-viewtoggle="'+tabKey+'">'+
     '<button data-view="cards" class="'+(mode==="cards"?"active":"")+'">Cards</button>'+
     '<button data-view="table" class="'+(mode==="table"?"active":"")+'">Table</button>'+
@@ -78,26 +70,44 @@ function renderViewToggle(tabKey){
 function bindViewToggle(el, tabKey, rerender){
   el.querySelectorAll('[data-viewtoggle="'+tabKey+'"] button').forEach(function(btn){
     btn.addEventListener("click", function(){
-      state.viewMode[tabKey] = btn.getAttribute("data-view");
+      state.viewOverride[tabKey] = btn.getAttribute("data-view");
       rerender();
     });
   });
 }
 
-/* One row per item, one column per guideline (fixed ALL_IDS order) — the
-   matrix view of the same data detailItemHTML renders as stacked cards.
-   A guideline with no note for that item gets an empty cell. */
-function renderItemsAsTable(items){
-  var head = '<tr><th class="row-head-col">Item</th>'+ALL_IDS.map(function(id){
+/* One card per selected guideline, side by side — same visual pattern as a
+   Compare card, scoped to a single topic (categoryKey matches a
+   COMPARE_CATEGORIES key: "diagnosis", "ed", "hospital", "outpatient",
+   "discharge", "followup", or "specialNotes"). */
+function renderGuidelineCards(ids, categoryKey){
+  if (!ids.length) return '<p class="fields-empty">No guidelines selected — use the chips above.</p>';
+  var cards = ids.map(function(id){
     var g = GUIDELINES[id];
-    return '<th data-gid="'+id+'"><div class="col-head"><span class="pop-pill '+g.pop+'">'+(g.pop==="pediatric"?"Peds":"Adult")+'</span><span class="col-name">'+g.short+'</span></div></th>';
+    var loc = [g.city, g.state, g.country].filter(Boolean).join(", ");
+    return '<div class="compare-card"><h3>'+g.name+' <span class="pop-pill '+g.pop+'" style="margin-left:6px;">'+(g.pop==="pediatric"?"Peds":"Adult")+'</span></h3>'+
+      '<div class="loc">'+g.institution+' &middot; '+loc+'</div>'+
+      entryListHTML(getGuidelineEntries(id, categoryKey))+
+    '</div>';
+  }).join("");
+  return '<div class="compare-grid">'+cards+'</div>';
+}
+
+/* One row per item, one column per selected guideline — a guideline that
+   isn't selected has no column at all (not dimmed), and a selected
+   guideline with no note for that item gets an empty cell. */
+function renderItemsAsTable(items, ids){
+  if (!ids.length) return '<p class="fields-empty">No guidelines selected — use the chips above.</p>';
+  var head = '<tr><th class="row-head-col">Item</th>'+ids.map(function(id){
+    var g = GUIDELINES[id];
+    return '<th><div class="col-head"><span class="pop-pill '+g.pop+'">'+(g.pop==="pediatric"?"Peds":"Adult")+'</span><span class="col-name">'+g.short+'</span></div></th>';
   }).join("")+'</tr>';
   var rows = items.map(function(it){
-    var cells = ALL_IDS.map(function(id){
+    var cells = ids.map(function(id){
       var note = (it.notes && it.notes[id]) || "";
       var status = (it.status && it.status[id]) ? '<span class="status-badge '+GUIDELINES[id].pop+'">'+it.status[id]+'</span>' : "";
-      if (!note && !status) return '<td class="matrix-cell empty" data-gid="'+id+'">&mdash;</td>';
-      return '<td class="matrix-cell" data-gid="'+id+'">'+status+(note?'<p class="cell-note">'+note+'</p>':'')+'</td>';
+      if (!note && !status) return '<td class="matrix-cell empty">&mdash;</td>';
+      return '<td class="matrix-cell">'+status+(note?'<p class="cell-note">'+note+'</p>':'')+'</td>';
     }).join("");
     return '<tr><td class="row-head">'+it.name+'</td>'+cells+'</tr>';
   }).join("");
@@ -186,16 +196,17 @@ function renderAtlas(){
 
 function renderCriteria(){
   var el = document.getElementById("panel-diagnosis");
-  var mode = state.viewMode.diagnosis;
-  var body = mode==="table" ? renderItemsAsTable(CRITERIA) : CRITERIA.map(function(c){ return detailItemHTML(c); }).join("");
+  var ids = Array.from(state.diagnosisIds);
+  var mode = state.viewOverride.diagnosis || (ids.length>4 ? "table" : "cards");
+  var body = mode==="table" ? renderItemsAsTable(CRITERIA, ids) : renderGuidelineCards(ids, "diagnosis");
   var phases = PHASES.map(function(p,i){
     return '<div class="phase-card"><div class="idx">PHASE '+p.idx+'</div><h4>'+p.name+'</h4><p>'+p.text+'</p></div>';
   }).join("");
   el.innerHTML =
     '<div class="section">'+
-      '<div class="section-head"><h2>Diagnostic criteria</h2><p>Six recurring diagnostic topics, with each guideline&rsquo;s exact wording — not a paraphrase.</p></div>'+
-      renderDotLegend()+
-      renderViewToggle("diagnosis")+
+      '<div class="section-head"><h2>Diagnostic criteria</h2><p>Six recurring diagnostic topics, with each guideline&rsquo;s exact wording — not a paraphrase. Pick which guidelines to compare below.</p></div>'+
+      renderPicker("diagnosisIds")+
+      '<div class="compare-hint-row">'+renderSelectionHint(ids)+renderViewToggle("diagnosis", mode)+'</div>'+
       body+
       '<div class="callout"><b>Rome IV in pediatrics:</b> JHACH and Children\'s Minnesota both flag Rome IV as adult-oriented — it requires confirmed symptom resolution after cessation, which is difficult to verify in a single ED encounter. JHACH substitutes the Lonsdale pragmatic pediatric criteria instead.</div>'+
     '</div>'+
@@ -203,27 +214,28 @@ function renderCriteria(){
       '<div class="section-head"><h2>Stages &amp; phase frameworks</h2><p>A general reference for the 4-phase cyclic-vomiting model (interepisodic → prodromal → emetic → recovery), described explicitly by Rubio-Tapia (AGA) and Won. JHACH, Children&rsquo;s Minnesota, and Hsu describe a related but distinct 3-phase model (prodromal → hyperemetic → recovery) — see the &ldquo;Stages / Frameworks&rdquo; item above for each guideline&rsquo;s exact wording.</p></div>'+
       '<div class="phase-strip">'+phases+'</div>'+
     '</div>';
+  bindPicker(el, "diagnosisIds", renderCriteria);
   bindViewToggle(el, "diagnosis", renderCriteria);
-  refreshFilters();
 }
 
 function renderTreatment(){
   var el = document.getElementById("panel-treatment");
-  var mode = state.viewMode.treatment;
+  var ids = Array.from(state.treatmentIds);
+  var mode = state.viewOverride.treatment || (ids.length>4 ? "table" : "cards");
   var subnav = '<div class="subnav">'+TX_ORDER.map(function(s){
     return '<button data-sub="'+s+'" class="'+(state.activeSubtab.treatment===s?'active':'')+'">'+TX_LABELS[s]+'</button>';
   }).join("")+'</div>';
   var subpanels = TX_ORDER.map(function(setting){
     var groups = TX[setting].map(function(g){
-      var body = mode==="table" ? renderItemsAsTable(g.items) : g.items.map(function(it){ return detailItemHTML(it, { dose: it.dose }); }).join("");
+      var body = mode==="table" ? renderItemsAsTable(g.items, ids) : renderGuidelineCards(ids, setting);
       return '<div class="tx-group"><div class="tx-group-title">'+g.group+'</div>'+body+'</div>';
     }).join("");
     return '<div class="subpanel'+(state.activeSubtab.treatment===setting?' active':'')+'" data-subpanel="'+setting+'">'+groups+'</div>';
   }).join("");
   el.innerHTML =
-    '<div class="section-head"><h2>Treatment ladder</h2><p>Step through emergency-department, hospitalization, outpatient, and discharge management. Dosing and per-guideline text are drawn directly from each pathway.</p></div>'+
-    renderDotLegend()+
-    renderViewToggle("treatment")+
+    '<div class="section-head"><h2>Treatment ladder</h2><p>Step through emergency-department, hospitalization, outpatient, and discharge management. Dosing and per-guideline text are drawn directly from each pathway. The guideline selection below stays the same as you switch settings.</p></div>'+
+    renderPicker("treatmentIds")+
+    '<div class="compare-hint-row">'+renderSelectionHint(ids)+renderViewToggle("treatment", mode)+'</div>'+
     subnav + subpanels;
   el.querySelectorAll(".subnav button[data-sub]").forEach(function(btn){
     btn.addEventListener("click", function(){
@@ -231,43 +243,45 @@ function renderTreatment(){
       renderTreatment();
     });
   });
+  bindPicker(el, "treatmentIds", renderTreatment);
   bindViewToggle(el, "treatment", renderTreatment);
-  refreshFilters();
 }
 
 function renderFollowup(){
   var el = document.getElementById("panel-followup");
-  var mode = state.viewMode.followup;
-  var body = mode==="table" ? renderItemsAsTable(FOLLOWUP) : FOLLOWUP.map(function(f){ return detailItemHTML(f); }).join("");
+  var ids = Array.from(state.followupIds);
+  var mode = state.viewOverride.followup || (ids.length>4 ? "table" : "cards");
+  var body = mode==="table" ? renderItemsAsTable(FOLLOWUP, ids) : renderGuidelineCards(ids, "followup");
   el.innerHTML =
     '<div class="section-head"><h2>Follow-up care</h2><p>Referral pathways, education materials, and behavioral-health integration after the acute episode.</p></div>'+
-    renderDotLegend()+
-    renderViewToggle("followup")+
+    renderPicker("followupIds")+
+    '<div class="compare-hint-row">'+renderSelectionHint(ids)+renderViewToggle("followup", mode)+'</div>'+
     body;
+  bindPicker(el, "followupIds", renderFollowup);
   bindViewToggle(el, "followup", renderFollowup);
-  refreshFilters();
 }
 
 function renderSpecialNotes(){
   var el = document.getElementById("panel-specialnotes");
-  var mode = state.viewMode.specialnotes;
-  var body = mode==="table" ? renderItemsAsTable(SPECIALS) : SPECIALS.map(function(s){ return detailItemHTML(s); }).join("");
+  var ids = Array.from(state.specialNotesIds);
+  var mode = state.viewOverride.specialnotes || (ids.length>4 ? "table" : "cards");
+  var body = mode==="table" ? renderItemsAsTable(SPECIALS, ids) : renderGuidelineCards(ids, "specialNotes");
   var opioidRows = OPIOID_REASONS.map(function(r){
     return '<tr><td class="reason">'+r.reason+'</td><td>'+r.explanation+'</td></tr>';
   }).join("");
   el.innerHTML =
     '<div class="section">'+
       '<div class="section-head"><h2>Special notes</h2><p>QTc safety thresholds, pregnancy/population exclusions, and capsaicin application safety — specified explicitly by only a subset of guidelines.</p></div>'+
-      renderDotLegend()+
-      renderViewToggle("specialnotes")+
+      renderPicker("specialNotesIds")+
+      '<div class="compare-hint-row">'+renderSelectionHint(ids)+renderViewToggle("specialnotes", mode)+'</div>'+
       body+
     '</div>'+
     '<div class="section">'+
       '<div class="section-head"><h2>Why opioids are avoided in CHS</h2><p>A consistent theme across every guideline in this set.</p></div>'+
       '<div class="table-scroll"><table class="opioid-table"><thead><tr><th>Reason</th><th>Explanation</th></tr></thead><tbody>'+opioidRows+'</tbody></table></div>'+
     '</div>';
+  bindPicker(el, "specialNotesIds", renderSpecialNotes);
   bindViewToggle(el, "specialnotes", renderSpecialNotes);
-  refreshFilters();
 }
 
 function renderAVP(){
@@ -392,7 +406,7 @@ function renderCompare(){
     '</div>';
 
   var ids = Array.from(state.compareIds);
-  var viewMode = state.compareViewOverride || (ids.length>4 ? "table" : "cards");
+  var viewMode = state.viewOverride.compare || (ids.length>4 ? "table" : "cards");
   var viewToggle =
     '<div class="subnav view-toggle">'+
       '<button data-view="cards" class="'+(viewMode==="cards"?"active":"")+'">Cards</button>'+
@@ -435,7 +449,7 @@ function renderCompare(){
   });
   el.querySelectorAll(".view-toggle button").forEach(function(btn){
     btn.addEventListener("click", function(){
-      state.compareViewOverride = btn.getAttribute("data-view");
+      state.viewOverride.compare = btn.getAttribute("data-view");
       renderCompare();
     });
   });
@@ -660,16 +674,6 @@ function bindChipEvents(){
     chip.onclick = function(){ toggleGuideline(chip.getAttribute("data-id")); };
   });
 }
-
-document.addEventListener("click", function(e){
-  var dot = e.target.closest(".dot");
-  if (dot){ toggleGuideline(dot.getAttribute("data-dotid")); }
-});
-document.addEventListener("keydown", function(e){
-  if ((e.key==="Enter"||e.key===" ") && e.target.classList && e.target.classList.contains("dot")){
-    e.preventDefault(); toggleGuideline(e.target.getAttribute("data-dotid"));
-  }
-});
 
 document.getElementById("btnAll").addEventListener("click", function(){
   state.activeIds = new Set(ALL_IDS);
