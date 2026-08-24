@@ -414,6 +414,15 @@
   .col-head { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; }
   .col-head .col-name { font-size: 12.8px; font-weight: 700; color: var(--ink); }
 
+  /* Matrix table: one row per item, one column per guideline (Diagnosis,
+     Treatment, Follow-up Care, Special Notes table views). */
+  .matrix-table td.row-head { white-space: normal; width: 190px; max-width: 190px; font-size: 11.5px; line-height: 1.4; }
+  .matrix-table td.matrix-cell { font-size: 12.3px; line-height: 1.55; color: var(--ink-soft); }
+  .matrix-table td.matrix-cell .cell-note { margin: 6px 0 0; }
+  .matrix-table td.matrix-cell .cell-note:first-child { margin-top: 0; }
+  .matrix-table td.matrix-cell.empty { color: var(--ink-faint); text-align: center; font-size: 13px; }
+  [data-gid].dim { opacity: .35; }
+
   /* ---------- Contacts ---------- */
   .contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
   .contact-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }

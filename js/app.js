@@ -9,7 +9,8 @@ var state = {
   compareAxes: new Set(COMPARE_CATEGORIES.map(function(c){ return c.key; })),
   compareViewOverride: null, /* null = auto (table once >4 selected); or "cards"/"table" once the user picks explicitly */
   fieldsMenuOpen: false,
-  activeSubtab: { treatment: "ed" }
+  activeSubtab: { treatment: "ed" },
+  viewMode: { diagnosis: "cards", treatment: "cards", followup: "cards", specialnotes: "cards" }
 };
 
 /* ============================== HELPERS ============================== */
@@ -63,6 +64,44 @@ function detailItemHTML(item, opts){
     '</div>'+
     guidelineBreakdown(item)+
   '</div>';
+}
+
+/* Cards <-> Table toggle reused by Diagnosis, Treatment, Follow-up Care,
+   and Special Notes — same pattern as the Compare tab. */
+function renderViewToggle(tabKey){
+  var mode = state.viewMode[tabKey];
+  return '<div class="subnav view-toggle" data-viewtoggle="'+tabKey+'">'+
+    '<button data-view="cards" class="'+(mode==="cards"?"active":"")+'">Cards</button>'+
+    '<button data-view="table" class="'+(mode==="table"?"active":"")+'">Table</button>'+
+  '</div>';
+}
+function bindViewToggle(el, tabKey, rerender){
+  el.querySelectorAll('[data-viewtoggle="'+tabKey+'"] button').forEach(function(btn){
+    btn.addEventListener("click", function(){
+      state.viewMode[tabKey] = btn.getAttribute("data-view");
+      rerender();
+    });
+  });
+}
+
+/* One row per item, one column per guideline (fixed ALL_IDS order) — the
+   matrix view of the same data detailItemHTML renders as stacked cards.
+   A guideline with no note for that item gets an empty cell. */
+function renderItemsAsTable(items){
+  var head = '<tr><th class="row-head-col">Item</th>'+ALL_IDS.map(function(id){
+    var g = GUIDELINES[id];
+    return '<th data-gid="'+id+'"><div class="col-head"><span class="pop-pill '+g.pop+'">'+(g.pop==="pediatric"?"Peds":"Adult")+'</span><span class="col-name">'+g.short+'</span></div></th>';
+  }).join("")+'</tr>';
+  var rows = items.map(function(it){
+    var cells = ALL_IDS.map(function(id){
+      var note = (it.notes && it.notes[id]) || "";
+      var status = (it.status && it.status[id]) ? '<span class="status-badge '+GUIDELINES[id].pop+'">'+it.status[id]+'</span>' : "";
+      if (!note && !status) return '<td class="matrix-cell empty" data-gid="'+id+'">&mdash;</td>';
+      return '<td class="matrix-cell" data-gid="'+id+'">'+status+(note?'<p class="cell-note">'+note+'</p>':'')+'</td>';
+    }).join("");
+    return '<tr><td class="row-head">'+it.name+'</td>'+cells+'</tr>';
+  }).join("");
+  return '<div class="table-scroll"><table class="compare-table matrix-table"><thead>'+head+'</thead><tbody>'+rows+'</tbody></table></div>';
 }
 
 function intersects(guidelineIds){
@@ -147,7 +186,8 @@ function renderAtlas(){
 
 function renderCriteria(){
   var el = document.getElementById("panel-diagnosis");
-  var rows = CRITERIA.map(function(c){ return detailItemHTML(c); }).join("");
+  var mode = state.viewMode.diagnosis;
+  var body = mode==="table" ? renderItemsAsTable(CRITERIA) : CRITERIA.map(function(c){ return detailItemHTML(c); }).join("");
   var phases = PHASES.map(function(p,i){
     return '<div class="phase-card"><div class="idx">PHASE '+p.idx+'</div><h4>'+p.name+'</h4><p>'+p.text+'</p></div>';
   }).join("");
@@ -155,54 +195,63 @@ function renderCriteria(){
     '<div class="section">'+
       '<div class="section-head"><h2>Diagnostic criteria</h2><p>Six recurring diagnostic topics, with each guideline&rsquo;s exact wording — not a paraphrase.</p></div>'+
       renderDotLegend()+
-      rows+
+      renderViewToggle("diagnosis")+
+      body+
       '<div class="callout"><b>Rome IV in pediatrics:</b> JHACH and Children\'s Minnesota both flag Rome IV as adult-oriented — it requires confirmed symptom resolution after cessation, which is difficult to verify in a single ED encounter. JHACH substitutes the Lonsdale pragmatic pediatric criteria instead.</div>'+
     '</div>'+
     '<div class="section">'+
       '<div class="section-head"><h2>Stages &amp; phase frameworks</h2><p>A general reference for the 4-phase cyclic-vomiting model (interepisodic → prodromal → emetic → recovery), described explicitly by Rubio-Tapia (AGA) and Won. JHACH, Children&rsquo;s Minnesota, and Hsu describe a related but distinct 3-phase model (prodromal → hyperemetic → recovery) — see the &ldquo;Stages / Frameworks&rdquo; item above for each guideline&rsquo;s exact wording.</p></div>'+
       '<div class="phase-strip">'+phases+'</div>'+
     '</div>';
+  bindViewToggle(el, "diagnosis", renderCriteria);
   refreshFilters();
 }
 
 function renderTreatment(){
   var el = document.getElementById("panel-treatment");
+  var mode = state.viewMode.treatment;
   var subnav = '<div class="subnav">'+TX_ORDER.map(function(s){
     return '<button data-sub="'+s+'" class="'+(state.activeSubtab.treatment===s?'active':'')+'">'+TX_LABELS[s]+'</button>';
   }).join("")+'</div>';
   var subpanels = TX_ORDER.map(function(setting){
     var groups = TX[setting].map(function(g){
-      var items = g.items.map(function(it){ return detailItemHTML(it, { dose: it.dose }); }).join("");
-      return '<div class="tx-group"><div class="tx-group-title">'+g.group+'</div>'+items+'</div>';
+      var body = mode==="table" ? renderItemsAsTable(g.items) : g.items.map(function(it){ return detailItemHTML(it, { dose: it.dose }); }).join("");
+      return '<div class="tx-group"><div class="tx-group-title">'+g.group+'</div>'+body+'</div>';
     }).join("");
     return '<div class="subpanel'+(state.activeSubtab.treatment===setting?' active':'')+'" data-subpanel="'+setting+'">'+groups+'</div>';
   }).join("");
   el.innerHTML =
     '<div class="section-head"><h2>Treatment ladder</h2><p>Step through emergency-department, hospitalization, outpatient, and discharge management. Dosing and per-guideline text are drawn directly from each pathway.</p></div>'+
     renderDotLegend()+
+    renderViewToggle("treatment")+
     subnav + subpanels;
-  el.querySelectorAll(".subnav button").forEach(function(btn){
+  el.querySelectorAll(".subnav button[data-sub]").forEach(function(btn){
     btn.addEventListener("click", function(){
       state.activeSubtab.treatment = btn.getAttribute("data-sub");
       renderTreatment();
     });
   });
+  bindViewToggle(el, "treatment", renderTreatment);
   refreshFilters();
 }
 
 function renderFollowup(){
   var el = document.getElementById("panel-followup");
-  var rows = FOLLOWUP.map(function(f){ return detailItemHTML(f); }).join("");
+  var mode = state.viewMode.followup;
+  var body = mode==="table" ? renderItemsAsTable(FOLLOWUP) : FOLLOWUP.map(function(f){ return detailItemHTML(f); }).join("");
   el.innerHTML =
     '<div class="section-head"><h2>Follow-up care</h2><p>Referral pathways, education materials, and behavioral-health integration after the acute episode.</p></div>'+
     renderDotLegend()+
-    rows;
+    renderViewToggle("followup")+
+    body;
+  bindViewToggle(el, "followup", renderFollowup);
   refreshFilters();
 }
 
 function renderSpecialNotes(){
   var el = document.getElementById("panel-specialnotes");
-  var rows = SPECIALS.map(function(s){ return detailItemHTML(s); }).join("");
+  var mode = state.viewMode.specialnotes;
+  var body = mode==="table" ? renderItemsAsTable(SPECIALS) : SPECIALS.map(function(s){ return detailItemHTML(s); }).join("");
   var opioidRows = OPIOID_REASONS.map(function(r){
     return '<tr><td class="reason">'+r.reason+'</td><td>'+r.explanation+'</td></tr>';
   }).join("");
@@ -210,12 +259,14 @@ function renderSpecialNotes(){
     '<div class="section">'+
       '<div class="section-head"><h2>Special notes</h2><p>QTc safety thresholds, pregnancy/population exclusions, and capsaicin application safety — specified explicitly by only a subset of guidelines.</p></div>'+
       renderDotLegend()+
-      rows+
+      renderViewToggle("specialnotes")+
+      body+
     '</div>'+
     '<div class="section">'+
       '<div class="section-head"><h2>Why opioids are avoided in CHS</h2><p>A consistent theme across every guideline in this set.</p></div>'+
       '<div class="table-scroll"><table class="opioid-table"><thead><tr><th>Reason</th><th>Explanation</th></tr></thead><tbody>'+opioidRows+'</tbody></table></div>'+
     '</div>';
+  bindViewToggle(el, "specialnotes", renderSpecialNotes);
   refreshFilters();
 }
 
@@ -432,6 +483,10 @@ function refreshFilters(){
   document.querySelectorAll("[data-guidelines]").forEach(function(el){
     var ids = el.getAttribute("data-guidelines").split(",").filter(Boolean);
     applyFilterClass(el, ids);
+  });
+  /* Matrix-table columns: dim a whole guideline column when it's deselected. */
+  document.querySelectorAll("[data-gid]").forEach(function(el){
+    el.classList.toggle("dim", !state.activeIds.has(el.getAttribute("data-gid")));
   });
 }
 
