@@ -137,21 +137,6 @@
   .ghost-btn.pop-adult:hover { border-color: var(--resin); color: var(--resin-ink); }
   .ghost-btn.pop-pediatric .sw { background: var(--moss); }
   .ghost-btn.pop-pediatric:hover { border-color: var(--moss); color: var(--moss); }
-  .tip-ic { color: var(--ink-faint); flex: none; cursor: help; border-radius: 50%; }
-  .tip-ic:hover, .tip-ic:focus-visible { color: var(--moss); }
-
-  /* Generic hover/focus tooltip: add [data-tooltip="..."] to any positioned element */
-  [data-tooltip] { position: relative; }
-  [data-tooltip]::after {
-    content: attr(data-tooltip); position: absolute; bottom: 100%; right: -4px; margin-bottom: 10px;
-    width: 260px; max-width: 70vw; background: var(--ink); color: var(--paper); font-size: 11.5px; line-height: 1.5;
-    font-weight: 400; text-transform: none; letter-spacing: normal; padding: 10px 12px; border-radius: 8px;
-    box-shadow: var(--shadow); z-index: 50; opacity: 0; pointer-events: none; transform: translateY(4px);
-    transition: opacity .12s ease, transform .12s ease; text-align: left;
-  }
-  [data-tooltip]:hover::after, [data-tooltip]:focus::after, [data-tooltip]:focus-within::after { opacity: 1; transform: none; }
-  @media (prefers-reduced-motion: reduce) { [data-tooltip]::after { transition: none; } }
-
   main { padding-top: 28px; }
   .panel { display: none; }
   .panel.active { display: block; animation: fadein .25s ease; }
@@ -317,27 +302,7 @@
   .avp-col.highlight { background: var(--card-2); }
   @media (max-width: 720px) { .avp-cols { grid-template-columns: 1fr; } .avp-col:first-child { border-right: none; border-bottom: 1px solid var(--line); } }
 
-  /* ---------- Compare ---------- */
-  .compare-toolbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
-  .compare-toolbar .section-head { flex: 1 1 320px; margin-bottom: 0; }
-  .fields-filter { position: relative; flex: none; }
-  .fields-filter-btn {
-    display: flex; align-items: center; gap: 7px; border: 1px solid var(--line-strong); background: var(--card);
-    color: var(--ink-soft); border-radius: 999px; padding: 7px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer;
-  }
-  .fields-filter-btn:hover, .fields-filter-btn[aria-expanded="true"] { border-color: var(--bruise); color: var(--bruise); }
-  .fields-filter-btn .count { color: var(--ink-faint); font-size: 11px; }
-  .fields-filter-btn .caret { font-size: 10px; }
-  .fields-filter-menu {
-    display: none; position: absolute; top: 100%; right: 0; margin-top: 6px; z-index: 40; min-width: 250px;
-    background: var(--card); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); padding: 12px 14px;
-    box-shadow: var(--shadow); flex-direction: column; gap: 9px;
-  }
-  .fields-filter-menu.open { display: flex; }
-  .fields-filter-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; color: var(--ink-faint); margin-bottom: 2px; }
-  .fields-filter-menu label { display: flex; align-items: center; gap: 8px; font-size: 12.8px; color: var(--ink); cursor: pointer; }
-  .fields-filter-menu label .field-label-text { flex: 1; }
-  .fields-filter-menu input[type="checkbox"] { accent-color: var(--moss); width: 14px; height: 14px; flex: none; }
+  /* ---------- Guideline picker (Diagnosis / Treatment / Follow-up / Special Notes) ---------- */
   .fields-empty { font-size: 12.5px; color: var(--ink-faint); font-style: italic; }
   .compare-picker { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
   .compare-chip {

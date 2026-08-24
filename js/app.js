@@ -5,9 +5,6 @@
 
 var state = {
   activeIds: new Set(ALL_IDS),
-  compareIds: new Set(["jhach","ucsf","laPoint","agaRubio"]),
-  compareAxes: new Set(COMPARE_CATEGORIES.map(function(c){ return c.key; })),
-  fieldsMenuOpen: false,
   activeSubtab: { treatment: "ed" },
   /* Each of these tabs gets its own guideline picker, independent of the
      others and of the global filter chips — a deselected guideline is
@@ -17,7 +14,7 @@ var state = {
   followupIds: new Set(ALL_IDS),
   specialNotesIds: new Set(ALL_IDS),
   /* null = auto (table once >4 selected); "cards"/"table" once picked explicitly */
-  viewOverride: { diagnosis: null, treatment: null, followup: null, specialnotes: null, compare: null }
+  viewOverride: { diagnosis: null, treatment: null, followup: null, specialnotes: null }
 };
 
 /* ============================== HELPERS ============================== */
@@ -42,8 +39,8 @@ function linkify(text){
 }
 
 /* ---- Shared "compare this topic across guidelines" building blocks, used
-   by Diagnosis, Treatment, Follow-up Care, Special Notes, and Compare.
-   A guideline not in the picker's selection is fully absent — never dimmed. ---- */
+   by Diagnosis, Treatment, Follow-up Care, and Special Notes. A guideline
+   not in a tab's picker selection is fully absent — never dimmed. ---- */
 
 function renderPicker(idsSetKey){
   var idsSet = state[idsSetKey];
@@ -77,9 +74,9 @@ function renderSelectionHint(ids){
   return '<div class="compare-hint">'+ids.length+' of 11 selected'+(ids.length===1?' — add more to compare side by side.':'')+'</div>';
 }
 
-/* Cards <-> Table toggle reused by Diagnosis, Treatment, Follow-up Care,
-   and Special Notes — same pattern as the Compare tab. mode is computed by
-   the caller (auto-switches to table past 4 selections unless overridden). */
+/* Cards <-> Table toggle shared by Diagnosis, Treatment, Follow-up Care,
+   and Special Notes. mode is computed by the caller (auto-switches to
+   table past 4 selections unless overridden). */
 function renderViewToggle(tabKey, mode){
   return '<div class="subnav view-toggle" data-viewtoggle="'+tabKey+'">'+
     '<button data-view="cards" class="'+(mode==="cards"?"active":"")+'">Cards</button>'+
@@ -95,10 +92,9 @@ function bindViewToggle(el, tabKey, rerender){
   });
 }
 
-/* One card per selected guideline, side by side — same visual pattern as a
-   Compare card, scoped to a single topic (categoryKey matches a
-   COMPARE_CATEGORIES key: "diagnosis", "ed", "hospital", "outpatient",
-   "discharge", "followup", or "specialNotes"). */
+/* One card per selected guideline, side by side, scoped to a single topic
+   (categoryKey matches a TOPIC_SOURCES key: "diagnosis", "ed", "hospital",
+   "outpatient", "discharge", "followup", or "specialNotes"). */
 function renderGuidelineCards(ids, categoryKey){
   if (!ids.length) return '<p class="fields-empty">No guidelines selected — use the chips above.</p>';
   var cards = ids.map(function(id){
@@ -181,10 +177,9 @@ function renderOverview(){
       '<div class="universal-grid">'+
         '<div class="universal-card"><span class="tag">Filter</span><br>Use the guideline chips above to select any combination of the 11 sources. Cards throughout the atlas dim to show only what your selection covers.</div>'+
         '<div class="universal-card"><span class="tag">Guidelines</span><br>Browse the full directory of all 11 institutions, with location, population, and a link to the original guideline text.</div>'+
-        '<div class="universal-card"><span class="tag">Diagnosis</span><br>Six recurring diagnostic topics — Rome IV, chronic use, UDS, hot showers, cessation response, and phase frameworks — with each guideline&rsquo;s exact wording.</div>'+
-        '<div class="universal-card"><span class="tag">Treatment</span><br>Step through ED, hospitalization, outpatient, and discharge management with dosing and per-guideline detail.</div>'+
+        '<div class="universal-card"><span class="tag">Diagnosis</span><br>Six recurring diagnostic topics — Rome IV, chronic use, UDS, hot showers, cessation response, and phase frameworks. Pick any number of guidelines to compare side by side, pulled verbatim from the source tables.</div>'+
+        '<div class="universal-card"><span class="tag">Treatment</span><br>Step through ED, hospitalization, outpatient, and discharge management with dosing and per-guideline detail, comparable side by side for whichever guidelines you pick.</div>'+
         '<div class="universal-card"><span class="tag">Follow-up &amp; Special Notes</span><br>Referral pathways and education materials, plus QTc/pregnancy/capsaicin safety thresholds only some guidelines specify.</div>'+
-        '<div class="universal-card"><span class="tag">Compare</span><br>Pick any number of guidelines — from 2 up to all 11 — for a full side-by-side comparison, pulled verbatim from the source tables.</div>'+
       '</div>'+
     '</div>';
   renderMap();
@@ -326,11 +321,11 @@ function isSubset(activeSet, pop){
   return arr.every(function(id){ return GUIDELINES[id].pop===pop; });
 }
 
-/* Pulls this guideline's entries for one Compare category straight from the
-   same CRITERIA / TX / FOLLOWUP arrays that drive the Diagnosis, Treatment,
-   and Follow-up tabs — so Compare never holds its own paraphrased copy. */
+/* Pulls this guideline's entries for one topic straight from the CRITERIA /
+   TX / FOLLOWUP / SPECIALS arrays — the single source of truth every tab
+   renders from, so there's never a separate paraphrased copy anywhere. */
 function getGuidelineEntries(id, categoryKey){
-  var cat = COMPARE_CATEGORIES.filter(function(c){ return c.key===categoryKey; })[0];
+  var cat = TOPIC_SOURCES.filter(function(c){ return c.key===categoryKey; })[0];
   if (!cat) return [];
   function noteFor(item){ return (item.notes && item.notes[id]) || ""; }
   if (cat.source==="CRITERIA"){
@@ -367,135 +362,6 @@ function entryListHTML(entries){
     '</li>';
   }).join("")+'</ul>';
 }
-
-function renderCompareCards(ids, visibleCats){
-  var cards = ids.map(function(id){
-    var g = GUIDELINES[id];
-    var loc = [g.city, g.state, g.country].filter(Boolean).join(", ");
-    var sections = visibleCats.length ? visibleCats.map(function(c){
-      return '<div class="axis"><div class="k">'+c.label+'</div>'+entryListHTML(getGuidelineEntries(id, c.key))+'</div>';
-    }).join("") : '<p class="fields-empty">No sections selected — use &ldquo;Fields&rdquo; above to choose what to show.</p>';
-    return '<div class="compare-card"><h3>'+g.name+' <span class="pop-pill '+g.pop+'" style="margin-left:6px;">'+(g.pop==="pediatric"?"Peds":"Adult")+'</span></h3>'+
-      '<div class="loc">'+g.institution+' &middot; '+loc+'</div>'+sections+'</div>';
-  }).join("");
-  return '<div class="compare-grid">'+cards+'</div>';
-}
-
-function renderCompareTable(ids, visibleCats){
-  if (!visibleCats.length){
-    return '<p class="fields-empty">No sections selected — use &ldquo;Fields&rdquo; above to choose what to show.</p>';
-  }
-  var head = '<tr><th class="row-head-col">Section</th>'+ids.map(function(id){
-    var g = GUIDELINES[id];
-    return '<th><div class="col-head"><span class="pop-pill '+g.pop+'">'+(g.pop==="pediatric"?"Peds":"Adult")+'</span><span class="col-name">'+g.short+'</span></div></th>';
-  }).join("")+'</tr>';
-  var rows = visibleCats.map(function(c){
-    return '<tr><td class="row-head">'+c.label+'</td>'+ids.map(function(id){
-      return '<td>'+entryListHTML(getGuidelineEntries(id, c.key))+'</td>';
-    }).join("")+'</tr>';
-  }).join("");
-  return '<div class="table-scroll"><table class="compare-table"><thead>'+head+'</thead><tbody>'+rows+'</tbody></table></div>';
-}
-
-function renderCompare(){
-  var el = document.getElementById("panel-compare");
-  var picker = '<div class="compare-picker">'+ALL_IDS.map(function(id){
-    var active = state.compareIds.has(id);
-    return '<button class="compare-chip'+(active?' active':'')+'" data-cmp="'+id+'" type="button">'+GUIDELINES[id].short+'</button>';
-  }).join("")+
-    '<button class="ghost-btn" id="compareSelectAll" type="button">Select all 11</button>'+
-    '<button class="ghost-btn" id="compareClear" type="button">Clear</button>'+
-  '</div>';
-
-  var visibleCats = COMPARE_CATEGORIES.filter(function(c){ return state.compareAxes.has(c.key); });
-  var fieldsMenu =
-    '<div class="fields-filter">'+
-      '<button class="fields-filter-btn" id="fieldsFilterBtn" type="button" aria-expanded="'+(state.fieldsMenuOpen?"true":"false")+'">Fields<span class="count tabular">'+visibleCats.length+'/'+COMPARE_CATEGORIES.length+'</span><span class="caret">&#9662;</span></button>'+
-      '<div class="fields-filter-menu'+(state.fieldsMenuOpen?' open':'')+'" id="fieldsFilterMenu">'+
-        '<div class="fields-filter-title">Show sections</div>'+
-        COMPARE_CATEGORIES.map(function(c){
-          var checked = state.compareAxes.has(c.key);
-          return '<label><input type="checkbox" data-axis="'+c.key+'" '+(checked?'checked':'')+'/>'+
-            '<span class="field-label-text">'+c.label+'</span>'+
-            '<span class="tip-ic" data-tooltip="'+c.help+'" tabindex="0" role="note">&#9432;</span>'+
-          '</label>';
-        }).join("")+
-      '</div>'+
-    '</div>';
-
-  var ids = Array.from(state.compareIds);
-  var viewMode = state.viewOverride.compare || (ids.length>4 ? "table" : "cards");
-  var viewToggle =
-    '<div class="subnav view-toggle">'+
-      '<button data-view="cards" class="'+(viewMode==="cards"?"active":"")+'">Cards</button>'+
-      '<button data-view="table" class="'+(viewMode==="table"?"active":"")+'">Table</button>'+
-    '</div>';
-
-  var body = viewMode==="table" ? renderCompareTable(ids, visibleCats) : renderCompareCards(ids, visibleCats);
-
-  el.innerHTML =
-    '<div class="compare-toolbar">'+
-      '<div class="section-head"><h2>Side-by-side comparison</h2><p>Choose any number of guidelines, from 2 up to all 11. Each section is one of the six sections of the source guideline table (Diagnoses, ED, Hospitalization, Outpatient, Discharge, Follow-up) — text shown is copied exactly from that guideline&rsquo;s entry, never paraphrased. Open &ldquo;Fields&rdquo; and hover the &#9432; next to a section name for what it covers.</p></div>'+
-      fieldsMenu+
-    '</div>'+
-    picker+
-    '<div class="compare-hint-row">'+
-      '<div class="compare-hint">'+ids.length+' of 11 selected'+(ids.length===1?' — add more to compare side by side.':'')+'</div>'+
-      viewToggle+
-    '</div>'+
-    body;
-
-  el.querySelectorAll(".compare-chip").forEach(function(btn){
-    btn.addEventListener("click", function(){
-      var id = btn.getAttribute("data-cmp");
-      if (state.compareIds.has(id)){
-        if (state.compareIds.size>1) state.compareIds.delete(id);
-      } else {
-        state.compareIds.add(id);
-      }
-      renderCompare();
-    });
-  });
-  document.getElementById("compareSelectAll").addEventListener("click", function(){
-    state.compareIds = new Set(ALL_IDS);
-    renderCompare();
-  });
-  document.getElementById("compareClear").addEventListener("click", function(){
-    var first = Array.from(state.compareIds)[0] || ALL_IDS[0];
-    state.compareIds = new Set([first]);
-    renderCompare();
-  });
-  el.querySelectorAll(".view-toggle button").forEach(function(btn){
-    btn.addEventListener("click", function(){
-      state.viewOverride.compare = btn.getAttribute("data-view");
-      renderCompare();
-    });
-  });
-
-  var fieldsBtn = document.getElementById("fieldsFilterBtn");
-  fieldsBtn.addEventListener("click", function(e){
-    e.stopPropagation();
-    state.fieldsMenuOpen = !state.fieldsMenuOpen;
-    renderCompare();
-  });
-  document.getElementById("fieldsFilterMenu").addEventListener("click", function(e){ e.stopPropagation(); });
-  el.querySelectorAll("[data-axis]").forEach(function(box){
-    box.addEventListener("change", function(){
-      var key = box.getAttribute("data-axis");
-      if (box.checked) state.compareAxes.add(key); else state.compareAxes.delete(key);
-      state.fieldsMenuOpen = true;
-      renderCompare();
-    });
-  });
-}
-
-document.addEventListener("click", function(e){
-  if (!state.fieldsMenuOpen) return;
-  if (!e.target.closest(".fields-filter")){
-    state.fieldsMenuOpen = false;
-    if (document.getElementById("panel-compare").classList.contains("active")) renderCompare();
-  }
-});
 
 function renderContacts(){
   var el = document.getElementById("panel-contacts");
@@ -612,12 +478,12 @@ function renderLocationDetail(body, title, loc){
     '<div class="map-modal-inst">'+g.institution+'</div>'+
     '<div class="map-modal-loc">'+locParts.join(", ")+'</div>'+
     '<div class="map-modal-actions">'+
-      '<button class="modal-cta" data-goto-compare="'+loc.id+'" type="button">Compare this guideline in detail</button>'+
+      '<button class="modal-cta" data-goto-guideline="'+loc.id+'" type="button">View this guideline in detail</button>'+
       (g.sourceUrl ? '<a class="modal-cta outline" href="'+g.sourceUrl+'" target="_blank" rel="noopener noreferrer">Read the original guideline ↗</a>' : '')+
     '</div>';
-  body.querySelectorAll("[data-goto-compare]").forEach(function(btn){
+  body.querySelectorAll("[data-goto-guideline]").forEach(function(btn){
     btn.addEventListener("click", function(){
-      goToCompareGuideline(btn.getAttribute("data-goto-compare"));
+      goToGuidelineDetail(btn.getAttribute("data-goto-guideline"));
     });
   });
 }
@@ -661,10 +527,19 @@ function activateTab(tabName){
   if (tabName==="avp") renderAVP();
 }
 
-function goToCompareGuideline(id){
-  state.compareIds = new Set([id]);
+/* Focuses every content tab's picker on just this one guideline, so the
+   focus set from the map carries over as the user explores other tabs. */
+function goToGuidelineDetail(id){
+  state.diagnosisIds = new Set([id]);
+  state.treatmentIds = new Set([id]);
+  state.followupIds = new Set([id]);
+  state.specialNotesIds = new Set([id]);
+  renderCriteria();
+  renderTreatment();
+  renderFollowup();
+  renderSpecialNotes();
   closeMapModal();
-  activateTab("compare");
+  activateTab("diagnosis");
   window.scrollTo({ top:0, behavior:"smooth" });
 }
 
@@ -738,7 +613,6 @@ renderTreatment();
 renderFollowup();
 renderSpecialNotes();
 renderAVP();
-renderCompare();
 renderContacts();
 applyTheme();
 syncHeaderHeight();

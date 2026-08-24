@@ -1132,7 +1132,8 @@ var AVP = [
     adult:"Opioid avoidance, QTc safety, hot-shower burn risk, UDS limitations (delta-8/delta-10/synthetic products may evade detection), and patient resistance to diagnosis are the recurring themes." }
 ];
 
-var COMPARE_CATEGORIES = [
+/* Where each tab's getGuidelineEntries() pulls its per-guideline text from. */
+var TOPIC_SOURCES = [
   { key:"diagnosis", label:"Diagnosis", source:"CRITERIA",
     help:"Which of the 6 detailed diagnostic topics this guideline addresses, from the Diagnoses tables (source doc)." },
   { key:"ed", label:"Emergency Department", source:"TX", settingKey:"ed",
