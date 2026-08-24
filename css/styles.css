@@ -290,18 +290,28 @@
   .legend-item .sw.pediatric { background: var(--moss); }
   .legend-item .sw.adult { background: var(--resin); }
 
-  .crit-list { display: flex; flex-direction: column; gap: 10px; }
-  .crit-row {
-    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px;
-    display: grid; grid-template-columns: minmax(180px,1.1fr) minmax(140px,auto) minmax(220px,1.6fr); gap: 18px; align-items: start;
-    transition: opacity .15s ease, filter .15s ease;
+  /* ---------- Detail item (Diagnosis / Treatment / Follow-up / Special Notes) ---------- */
+  .detail-item {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 20px;
+    margin-bottom: 14px; transition: opacity .15s ease, filter .15s ease;
   }
-  .crit-row.dim { opacity: .32; filter: grayscale(.6); }
-  .crit-row .name { font-weight: 600; font-size: 14.5px; }
-  .crit-row .count { font-size: 11px; color: var(--ink-faint); margin-top: 4px; }
-  .crit-row .notes { font-size: 12.5px; color: var(--ink-soft); line-height: 1.55; }
-  .crit-row .notes b { color: var(--ink); font-weight: 600; }
-  @media (max-width: 760px) { .crit-row { grid-template-columns: 1fr; } }
+  .detail-item.dim { opacity: .32; filter: grayscale(.6); }
+  .detail-item-head {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .detail-item-name { font-weight: 700; font-size: 15px; color: var(--ink); }
+  .detail-item-dose { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); }
+  .detail-item-count { font-size: 11px; color: var(--ink-faint); margin-left: auto; flex: none; }
+  .detail-item .entry-list { gap: 14px; }
+  .detail-item .entry-list li { padding-left: 12px; }
+  .detail-item .entry-name { font-size: 13px; }
+  .status-badge {
+    display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    padding: 2px 7px; border-radius: 999px; margin-left: 8px; vertical-align: 1px;
+  }
+  .status-badge.pediatric { background: var(--moss-soft); color: var(--moss-ink); }
+  .status-badge.adult { background: var(--resin-soft); color: var(--resin-ink); }
 
   .phase-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
   .phase-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; position: relative; }
@@ -317,17 +327,6 @@
   /* ---------- Treatment tables ---------- */
   .tx-group { margin-bottom: 22px; }
   .tx-group-title { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; color: var(--ink-faint); margin: 0 0 10px; padding-left: 2px; }
-  .tx-item {
-    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 13px 18px; margin-bottom: 8px;
-    display: grid; grid-template-columns: minmax(160px,1fr) minmax(180px,1.2fr) minmax(90px,auto) minmax(220px,1.8fr); gap: 16px; align-items: start;
-    transition: opacity .15s ease, filter .15s ease;
-  }
-  .tx-item.dim { opacity: .3; filter: grayscale(.6); }
-  .tx-item .name { font-weight: 600; font-size: 14px; }
-  .tx-item .dose { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); line-height: 1.5; }
-  .tx-item .note { font-size: 12.3px; color: var(--ink-soft); line-height: 1.55; }
-  @media (max-width: 820px) { .tx-item { grid-template-columns: 1fr; } .tx-item .dotgrid { flex-wrap: wrap; } }
-
   .subnav { display: flex; gap: 6px; margin-bottom: 22px; flex-wrap: wrap; }
   .subnav button {
     border: 1px solid var(--line-strong); background: var(--card); color: var(--ink-soft); border-radius: 999px;
@@ -337,12 +336,6 @@
   .subpanel { display: none; }
   .subpanel.active { display: block; }
 
-  /* ---------- Special considerations ---------- */
-  .special-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
-  .special-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
-  .special-card h4 { font-size: 14.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-  .special-card h4 .ic { color: var(--bruise); }
-  .special-card p { font-size: 13px; color: var(--ink-soft); margin: 0; line-height: 1.55; }
 
   .opioid-table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
   .opioid-table th, .opioid-table td { text-align: left; padding: 11px 16px; font-size: 13px; border-bottom: 1px solid var(--line); vertical-align: top; }

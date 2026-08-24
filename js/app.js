@@ -38,6 +38,33 @@ function renderDotLegend(){
   return '<div class="dot-legend"><span class="dot-legend-label">Dot order</span>'+items+'</div>';
 }
 
+/* Renders one <li> per guideline that has a note on this item, in fixed
+   ALL_IDS order — the guideline's own name plus its exact wording, never a
+   shared paraphrase. Optional item.status[id] renders as a short badge. */
+function guidelineBreakdown(item){
+  var notes = item.notes || {};
+  var rows = ALL_IDS.filter(function(id){ return notes[id]; }).map(function(id){
+    var g = GUIDELINES[id];
+    var badge = (item.status && item.status[id]) ? '<span class="status-badge '+g.pop+'">'+item.status[id]+'</span>' : '';
+    return '<li><span class="entry-name">'+g.short+'</span>'+badge+'<span class="entry-note">'+notes[id]+'</span></li>';
+  }).join("");
+  return rows ? '<ul class="entry-list">'+rows+'</ul>' : '<p class="fields-empty">No guideline-specific text available for this item.</p>';
+}
+
+function detailItemHTML(item, opts){
+  opts = opts || {};
+  var count = item.guidelines.length;
+  return '<div class="detail-item" data-guidelines="'+item.guidelines.join(",")+'">'+
+    '<div class="detail-item-head">'+
+      '<div class="detail-item-name">'+item.name+'</div>'+
+      (opts.dose ? '<div class="detail-item-dose">'+opts.dose+'</div>' : '')+
+      '<div class="detail-item-count tabular">'+count+' of 11</div>'+
+      dotgrid(item.guidelines)+
+    '</div>'+
+    guidelineBreakdown(item)+
+  '</div>';
+}
+
 function intersects(guidelineIds){
   for (var i=0;i<guidelineIds.length;i++){ if (state.activeIds.has(guidelineIds[i])) return true; }
   return false;
@@ -87,7 +114,10 @@ function renderOverview(){
       '<div class="universal-grid">'+
         '<div class="universal-card"><span class="tag">Filter</span><br>Use the guideline chips above to select any combination of the 11 sources. Cards throughout the atlas dim to show only what your selection covers.</div>'+
         '<div class="universal-card"><span class="tag">Guidelines</span><br>Browse the full directory of all 11 institutions, with location, population, and a link to the original guideline text.</div>'+
-        '<div class="universal-card"><span class="tag">Compare</span><br>Pick any number of guidelines — from 2 up to all 11 — for a full side-by-side comparison across diagnosis, treatment, discharge, and follow-up, pulled verbatim from the source table.</div>'+
+        '<div class="universal-card"><span class="tag">Diagnosis</span><br>Six recurring diagnostic topics — Rome IV, chronic use, UDS, hot showers, cessation response, and phase frameworks — with each guideline&rsquo;s exact wording.</div>'+
+        '<div class="universal-card"><span class="tag">Treatment</span><br>Step through ED, hospitalization, outpatient, and discharge management with dosing and per-guideline detail.</div>'+
+        '<div class="universal-card"><span class="tag">Follow-up &amp; Special Notes</span><br>Referral pathways and education materials, plus QTc/pregnancy/capsaicin safety thresholds only some guidelines specify.</div>'+
+        '<div class="universal-card"><span class="tag">Compare</span><br>Pick any number of guidelines — from 2 up to all 11 — for a full side-by-side comparison, pulled verbatim from the source tables.</div>'+
       '</div>'+
     '</div>';
   renderMap();
@@ -117,25 +147,19 @@ function renderAtlas(){
 
 function renderCriteria(){
   var el = document.getElementById("panel-diagnosis");
-  var rows = CRITERIA.map(function(c){
-    return '<div class="crit-row" data-guidelines="'+c.guidelines.join(",")+'">'+
-      '<div><div class="name">'+c.name+'</div><div class="count tabular">'+c.guidelines.length+' of 11 guidelines</div></div>'+
-      dotgrid(c.guidelines)+
-      '<div class="notes">'+c.notes+'</div>'+
-    '</div>';
-  }).join("");
+  var rows = CRITERIA.map(function(c){ return detailItemHTML(c); }).join("");
   var phases = PHASES.map(function(p,i){
     return '<div class="phase-card"><div class="idx">PHASE '+p.idx+'</div><h4>'+p.name+'</h4><p>'+p.text+'</p></div>';
   }).join("");
   el.innerHTML =
     '<div class="section">'+
-      '<div class="section-head"><h2>Diagnostic criteria</h2><p>Which of the 9 recurring diagnostic elements each guideline requires or references, with institution-specific caveats.</p></div>'+
+      '<div class="section-head"><h2>Diagnostic criteria</h2><p>Six recurring diagnostic topics, with each guideline&rsquo;s exact wording — not a paraphrase.</p></div>'+
       renderDotLegend()+
-      '<div class="crit-list">'+rows+'</div>'+
-      '<div class="callout"><b>Rome IV in pediatrics:</b> JHACH and Children\'s Minnesota both flag Rome IV as adult-oriented — it requires confirmed symptom resolution after cessation, which is difficult to verify in a single ED encounter. JHACH substitutes the Lonsdale 2021 pragmatic pediatric criteria instead.</div>'+
+      rows+
+      '<div class="callout"><b>Rome IV in pediatrics:</b> JHACH and Children\'s Minnesota both flag Rome IV as adult-oriented — it requires confirmed symptom resolution after cessation, which is difficult to verify in a single ED encounter. JHACH substitutes the Lonsdale pragmatic pediatric criteria instead.</div>'+
     '</div>'+
     '<div class="section">'+
-      '<div class="section-head"><h2>The 4-phase clinical framework</h2><p>Referenced explicitly by Rubio-Tapia (AGA), Won, Children\'s Minnesota, and Hsu — and implicit in how every guideline sequences its treatment ladder.</p></div>'+
+      '<div class="section-head"><h2>Stages &amp; phase frameworks</h2><p>A general reference for the 4-phase cyclic-vomiting model (interepisodic → prodromal → emetic → recovery), described explicitly by Rubio-Tapia (AGA) and Won. JHACH, Children&rsquo;s Minnesota, and Hsu describe a related but distinct 3-phase model (prodromal → hyperemetic → recovery) — see the &ldquo;Stages / Frameworks&rdquo; item above for each guideline&rsquo;s exact wording.</p></div>'+
       '<div class="phase-strip">'+phases+'</div>'+
     '</div>';
   refreshFilters();
@@ -148,20 +172,13 @@ function renderTreatment(){
   }).join("")+'</div>';
   var subpanels = TX_ORDER.map(function(setting){
     var groups = TX[setting].map(function(g){
-      var items = g.items.map(function(it){
-        return '<div class="tx-item" data-guidelines="'+it.guidelines.join(",")+'">'+
-          '<div class="name">'+it.name+'</div>'+
-          '<div class="dose">'+it.dose+'</div>'+
-          dotgrid(it.guidelines)+
-          '<div class="note">'+(it.note||'')+'</div>'+
-        '</div>';
-      }).join("");
+      var items = g.items.map(function(it){ return detailItemHTML(it, { dose: it.dose }); }).join("");
       return '<div class="tx-group"><div class="tx-group-title">'+g.group+'</div>'+items+'</div>';
     }).join("");
     return '<div class="subpanel'+(state.activeSubtab.treatment===setting?' active':'')+'" data-subpanel="'+setting+'">'+groups+'</div>';
   }).join("");
   el.innerHTML =
-    '<div class="section-head"><h2>Treatment ladder</h2><p>Step through emergency-department, hospitalization, outpatient, and discharge management. Dosing and per-guideline notes are drawn directly from each pathway.</p></div>'+
+    '<div class="section-head"><h2>Treatment ladder</h2><p>Step through emergency-department, hospitalization, outpatient, and discharge management. Dosing and per-guideline text are drawn directly from each pathway.</p></div>'+
     renderDotLegend()+
     subnav + subpanels;
   el.querySelectorAll(".subnav button").forEach(function(btn){
@@ -175,28 +192,25 @@ function renderTreatment(){
 
 function renderFollowup(){
   var el = document.getElementById("panel-followup");
-  var rows = FOLLOWUP.map(function(f){
-    return '<div class="tx-item" data-guidelines="'+f.guidelines.join(",")+'" style="grid-template-columns:minmax(200px,1.1fr) minmax(90px,auto) minmax(220px,1.8fr);">'+
-      '<div class="name">'+f.name+'</div>'+
-      dotgrid(f.guidelines)+
-      '<div class="note">'+f.note+'</div>'+
-    '</div>';
-  }).join("");
-  var specials = SPECIALS.map(function(s){
-    return '<div class="special-card"><h4><span class="ic">&#9888;</span>'+s.title+dotgrid(s.guidelines)+'</h4><p>'+s.text+'</p></div>';
-  }).join("");
+  var rows = FOLLOWUP.map(function(f){ return detailItemHTML(f); }).join("");
+  el.innerHTML =
+    '<div class="section-head"><h2>Follow-up care</h2><p>Referral pathways, education materials, and behavioral-health integration after the acute episode.</p></div>'+
+    renderDotLegend()+
+    rows;
+  refreshFilters();
+}
+
+function renderSpecialNotes(){
+  var el = document.getElementById("panel-specialnotes");
+  var rows = SPECIALS.map(function(s){ return detailItemHTML(s); }).join("");
   var opioidRows = OPIOID_REASONS.map(function(r){
     return '<tr><td class="reason">'+r.reason+'</td><td>'+r.explanation+'</td></tr>';
   }).join("");
   el.innerHTML =
     '<div class="section">'+
-      '<div class="section-head"><h2>Follow-up care</h2><p>Referral pathways, education materials, and behavioral-health integration after the acute episode.</p></div>'+
+      '<div class="section-head"><h2>Special notes</h2><p>QTc safety thresholds, pregnancy/population exclusions, and capsaicin application safety — specified explicitly by only a subset of guidelines.</p></div>'+
       renderDotLegend()+
-      '<div class="tx-group">'+rows+'</div>'+
-    '</div>'+
-    '<div class="section">'+
-      '<div class="section-head"><h2>Special considerations &amp; safety</h2><p>Exclusion criteria and safety thresholds that only a subset of guidelines specify explicitly.</p></div>'+
-      '<div class="special-grid">'+specials+'</div>'+
+      rows+
     '</div>'+
     '<div class="section">'+
       '<div class="section-head"><h2>Why opioids are avoided in CHS</h2><p>A consistent theme across every guideline in this set.</p></div>'+
@@ -235,22 +249,27 @@ function isSubset(activeSet, pop){
 function getGuidelineEntries(id, categoryKey){
   var cat = COMPARE_CATEGORIES.filter(function(c){ return c.key===categoryKey; })[0];
   if (!cat) return [];
+  function noteFor(item){ return (item.notes && item.notes[id]) || ""; }
   if (cat.source==="CRITERIA"){
     return CRITERIA.filter(function(c){ return c.guidelines.indexOf(id)>=0; })
-      .map(function(c){ return { name:c.name, dose:"", note:c.notes||"" }; });
+      .map(function(c){ return { name:c.name, dose:(c.status && c.status[id]) || "", note:noteFor(c) }; });
   }
   if (cat.source==="TX"){
     var out = [];
     (TX[cat.settingKey]||[]).forEach(function(g){
       g.items.forEach(function(it){
-        if (it.guidelines.indexOf(id)>=0) out.push({ name:it.name, dose:it.dose||"", note:it.note||"" });
+        if (it.guidelines.indexOf(id)>=0) out.push({ name:it.name, dose:it.dose||"", note:noteFor(it) });
       });
     });
     return out;
   }
   if (cat.source==="FOLLOWUP"){
     return FOLLOWUP.filter(function(f){ return f.guidelines.indexOf(id)>=0; })
-      .map(function(f){ return { name:f.name, dose:"", note:f.note||"" }; });
+      .map(function(f){ return { name:f.name, dose:"", note:noteFor(f) }; });
+  }
+  if (cat.source==="SPECIALS"){
+    return SPECIALS.filter(function(s){ return s.guidelines.indexOf(id)>=0; })
+      .map(function(s){ return { name:s.name, dose:"", note:noteFor(s) }; });
   }
   return [];
 }
@@ -640,6 +659,7 @@ renderAtlas();
 renderCriteria();
 renderTreatment();
 renderFollowup();
+renderSpecialNotes();
 renderAVP();
 renderCompare();
 renderContacts();
