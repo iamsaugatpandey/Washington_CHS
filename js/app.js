@@ -22,6 +22,25 @@ var state = {
 
 /* ============================== HELPERS ============================== */
 
+/* Turns bare URLs and bare domains (e.g. "mntc.org", "emj.bmj.com/content/41/5/328")
+   inside source text into clickable links, without touching dosing figures
+   like "0.1%" or "8 mg" — the domain match requires a real TLD suffix, and
+   the two alternatives share one pass so a matched URL is never re-scanned. */
+var LINKIFY_RE = /(https?:\/\/[^\s<]+)|(\b(?:[a-zA-Z0-9-]+\.)+(?:com|org|net|gov|edu)(?:\/[a-zA-Z0-9\-\/_]+)?\b)/g;
+function linkify(text){
+  if (!text) return text;
+  return text.replace(LINKIFY_RE, function(match, url, domain){
+    if (url){
+      var trail = "";
+      var core = url;
+      var m = core.match(/[).,;:'"]+$/);
+      if (m){ trail = m[0]; core = core.slice(0, core.length - trail.length); }
+      return '<a href="'+core+'" target="_blank" rel="noopener noreferrer">'+core+'</a>'+trail;
+    }
+    return '<a href="https://'+domain+'" target="_blank" rel="noopener noreferrer">'+domain+'</a>';
+  });
+}
+
 /* ---- Shared "compare this topic across guidelines" building blocks, used
    by Diagnosis, Treatment, Follow-up Care, Special Notes, and Compare.
    A guideline not in the picker's selection is fully absent — never dimmed. ---- */
@@ -105,9 +124,8 @@ function renderItemsAsTable(items, ids){
   var rows = items.map(function(it){
     var cells = ids.map(function(id){
       var note = (it.notes && it.notes[id]) || "";
-      var status = (it.status && it.status[id]) ? '<span class="status-badge '+GUIDELINES[id].pop+'">'+it.status[id]+'</span>' : "";
-      if (!note && !status) return '<td class="matrix-cell empty">&mdash;</td>';
-      return '<td class="matrix-cell">'+status+(note?'<p class="cell-note">'+note+'</p>':'')+'</td>';
+      if (!note) return '<td class="matrix-cell empty">&mdash;</td>';
+      return '<td class="matrix-cell"><p class="cell-note">'+linkify(note)+'</p></td>';
     }).join("");
     return '<tr><td class="row-head">'+it.name+'</td>'+cells+'</tr>';
   }).join("");
@@ -317,7 +335,7 @@ function getGuidelineEntries(id, categoryKey){
   function noteFor(item){ return (item.notes && item.notes[id]) || ""; }
   if (cat.source==="CRITERIA"){
     return CRITERIA.filter(function(c){ return c.guidelines.indexOf(id)>=0; })
-      .map(function(c){ return { name:c.name, dose:(c.status && c.status[id]) || "", note:noteFor(c) }; });
+      .map(function(c){ return { name:c.name, dose:"", note:noteFor(c) }; });
   }
   if (cat.source==="TX"){
     var out = [];
@@ -345,7 +363,7 @@ function entryListHTML(entries){
     return '<li>'+
       '<span class="entry-name">'+e.name+'</span>'+
       (e.dose ? '<span class="entry-dose">'+e.dose+'</span>' : '')+
-      (e.note ? '<span class="entry-note">'+e.note+'</span>' : '')+
+      (e.note ? '<span class="entry-note">'+linkify(e.note)+'</span>' : '')+
     '</li>';
   }).join("")+'</ul>';
 }

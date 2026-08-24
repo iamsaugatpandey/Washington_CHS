@@ -273,13 +273,6 @@
   .atlas-card .source-link { flex: none; color: var(--moss); font-weight: 600; text-decoration: none; white-space: nowrap; }
   .atlas-card .source-link:hover { text-decoration: underline; }
 
-  /* ---------- Diagnosis / matrix ---------- */
-  .status-badge {
-    display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
-    padding: 2px 7px; border-radius: 999px; margin-left: 8px; vertical-align: 1px;
-  }
-  .status-badge.pediatric { background: var(--moss-soft); color: var(--moss-ink); }
-  .status-badge.adult { background: var(--resin-soft); color: var(--resin-ink); }
 
   .phase-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
   .phase-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; position: relative; }
@@ -366,6 +359,8 @@
   .entry-name { display: block; font-size: 12.5px; font-weight: 700; color: var(--ink); }
   .entry-dose { display: block; font-size: 11px; font-family: var(--font-mono); color: var(--ink-soft); margin-top: 3px; line-height: 1.5; }
   .entry-note { display: block; font-size: 12.3px; color: var(--ink-soft); line-height: 1.55; margin-top: 4px; }
+  .entry-note a, .cell-note a { word-break: break-word; }
+  .entry-note a:hover, .cell-note a:hover { color: var(--resin); }
 
   .compare-hint-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; }
   .compare-hint { font-size: 12.5px; color: var(--ink-faint); }
